@@ -1,3 +1,4 @@
+import express from "express"; // ✅ 新增
 import { google } from "googleapis";
 import { Client, GatewayIntentBits } from "discord.js";
 import dotenv from "dotenv";
@@ -8,6 +9,20 @@ import { fileURLToPath } from "url";
 
 dotenv.config();
 
+// ===================== ✅ 新增 Express 伺服器 =====================
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// 提供 Render 健康檢查使用
+app.get("/", (req, res) => {
+  res.send("✅ Discord Bot 正在運作中！");
+});
+
+app.listen(PORT, () => {
+  console.log(`🚀 Express 伺服器已啟動，埠號：${PORT}`);
+});
+
+// ===================== Discord Bot 主程式 =====================
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
 // ===================== Google Sheets 驗證設定（Render 版本） =====================
