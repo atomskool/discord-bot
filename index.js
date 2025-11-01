@@ -3,29 +3,37 @@ import { Client, GatewayIntentBits } from "discord.js";
 import dotenv from "dotenv";
 import schedule from "node-schedule";
 import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+
 dotenv.config();
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
-// ======== Google Sheets 驗證設定（Render 可用版本） ========
-// 如果 credentials.json 不存在，從環境變數建立臨時檔案
-if (!fs.existsSync("credentials.json")) {
-  fs.writeFileSync("credentials.json", process.env.GOOGLE_CREDENTIALS);
+// ===================== Google Sheets 驗證設定（Render 版本） =====================
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const credentialsPath = path.join(__dirname, "credentials.json");
+
+// 🔒 如果 credentials.json 不存在，就從環境變數建立一份（Render 專用）
+if (!fs.existsSync(credentialsPath)) {
+  fs.writeFileSync(credentialsPath, process.env.GOOGLE_CREDENTIALS);
   console.log("✅ 已建立 credentials.json 憑證檔案");
 }
 
 const auth = new google.auth.GoogleAuth({
-  keyFile: "credentials.json",
+  keyFile: credentialsPath,
   scopes: ["https://www.googleapis.com/auth/spreadsheets"],
 });
+
 const sheets = google.sheets({ version: "v4", auth });
 
-// ======== 啟動機器人 ========
+// ===================== 啟動機器人 =====================
 client.once("ready", () => {
   console.log(`✅ 已登入：${client.user.tag}`);
 });
 
-// ======== 指令監聽 ========
+// ===================== 指令監聽 =====================
 client.on("interactionCreate", async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
   const userId = interaction.user.id;
@@ -149,7 +157,7 @@ client.on("interactionCreate", async (interaction) => {
   }
 });
 
-// ======== ⏰ 每日自動提醒（明天 + 一週後） ========
+// ===================== ⏰ 每日自動提醒（明天 + 一週後） =====================
 schedule.scheduleJob("0 8 * * *", async () => {
   console.log("⏰ 開始每日提醒檢查...");
   try {
@@ -218,7 +226,7 @@ schedule.scheduleJob("0 8 * * *", async () => {
   }
 });
 
-// ======== 通用提醒訊息函式 ========
+// ===================== 通用提醒訊息函式 =====================
 async function sendReminder(users, row, type) {
   for (const u of users) {
     const userId = u[0];
@@ -247,5 +255,5 @@ async function sendReminder(users, row, type) {
   }
 }
 
-// ======== 啟動登入 ========
+// ===================== 啟動登入 =====================
 client.login(process.env.DISCORD_TOKEN);
