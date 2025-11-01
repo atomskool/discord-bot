@@ -2,11 +2,18 @@ import { google } from "googleapis";
 import { Client, GatewayIntentBits } from "discord.js";
 import dotenv from "dotenv";
 import schedule from "node-schedule";
+import fs from "fs";
 dotenv.config();
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
-// ======== Google Sheets 驗證設定 ========
+// ======== Google Sheets 驗證設定（Render 可用版本） ========
+// 如果 credentials.json 不存在，從環境變數建立臨時檔案
+if (!fs.existsSync("credentials.json")) {
+  fs.writeFileSync("credentials.json", process.env.GOOGLE_CREDENTIALS);
+  console.log("✅ 已建立 credentials.json 憑證檔案");
+}
+
 const auth = new google.auth.GoogleAuth({
   keyFile: "credentials.json",
   scopes: ["https://www.googleapis.com/auth/spreadsheets"],
@@ -115,16 +122,16 @@ client.on("interactionCreate", async (interaction) => {
 
           const msg =
 `**學校：${row["學校"] || ""}**
-日期：${dateStr}
-時間：${start}～${end}
-人數：${row["人數"] || ""}
-年級：${row["年級"] || ""}
-主題：${row["主題"] || ""}
-講師：${row["講師"] || ""}
-引導師：${row["引導師"] || ""}
-說明：${row["說明"] || "（無）"}
-聯絡對象：${row["聯絡對象"] || ""}
-聯絡電話：${row["聯絡電話"] || ""}`;
+**日期：${dateStr}**
+**時間：${start}～${end}**
+**人數：${row["人數"] || ""}**
+**年級：${row["年級"] || ""}**
+**主題：${row["主題"] || ""}**
+**講師：${row["講師"] || ""}**
+**引導師：${row["引導師"] || ""}**
+**說明：${row["說明"] || "（無）"}**
+**聯絡對象：${row["聯絡對象"] || ""}**
+**聯絡電話：${row["聯絡電話"] || ""}**`;
 
           results.push(msg);
         }
@@ -221,16 +228,16 @@ async function sendReminder(users, row, type) {
 `**通知通知📢${type === "明天" ? "明天有課程呦～" : "下週有課程呦～"}**
 
 **學校：${row["學校"] || ""}**
-日期：${row["日期"] || ""}
-時間：${row["開始時間"] || ""}～${row["結束時間"] || ""}
-人數：${row["人數"] || ""}
-年級：${row["年級"] || ""}
-主題：${row["主題"] || ""}
-講師：${row["講師"] || ""}
-引導師：${row["引導師"] || ""}
-說明：${row["說明"] || "（無）"}
-聯絡對象：${row["聯絡對象"] || ""}
-聯絡電話：${row["聯絡電話"] || ""}`;
+**日期：${row["日期"] || ""}**
+**時間：${row["開始時間"] || ""}～${row["結束時間"] || ""}**
+**人數：${row["人數"] || ""}**
+**年級：${row["年級"] || ""}**
+**主題：${row["主題"] || ""}**
+**講師：${row["講師"] || ""}**
+**引導師：${row["引導師"] || ""}**
+**說明：${row["說明"] || "（無）"}**
+**聯絡對象：${row["聯絡對象"] || ""}**
+**聯絡電話：${row["聯絡電話"] || ""}**`;
 
       await user.send(message);
       console.log(`✅ 已通知 ${u[1]} (${type}課程提醒)`);
