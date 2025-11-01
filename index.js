@@ -1,4 +1,6 @@
 import express from "express"; // ✅ 新增
+import bodyParser from "body-parser";
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
 import { google } from "googleapis";
 import { Client, GatewayIntentBits } from "discord.js";
 import dotenv from "dotenv";
@@ -47,6 +49,148 @@ const sheets = google.sheets({ version: "v4", auth });
 client.once("ready", () => {
   console.log(`✅ 已登入：${client.user.tag}`);
 });
+
+
+// ===================== ✅ 新增：接收 GAS 課程推播 =====================
+app.use(bodyParser.json());
+
+// 📩 接收 GAS 傳送課程
+app.post("/receive", async (req, res) => {
+  try {
+    const { rowIndex, course } = req.body;
+    if (!rowIndex || !course) {
+      return res.status(400).send("❌ 缺少 rowIndex 或 course");
+    }
+
+    console.log(`📦 收到課程資料（第 ${rowIndex} 列）`);
+
+    // 取得使用者清單
+    const userRes = await sheets.spreadsheets.values.get({
+      spreadsheetId: process.env.SHEET_ID,
+      range: "DC 使用者名單!A2:C",
+    });
+    const users = userRes.data.values || [];
+
+    // 組課程訊息
+    const message = `
+📢 **新課程通知**
+
+**學校：** ${course["學校"] || ""}
+**日期：** ${course["日期"] || ""}
+**時間：** ${course["開始時間"] || ""}～${course["結束時間"] || ""}
+**年級：** ${course["年級"] || ""}
+**主題：** ${course["主題"] || ""}
+**人數：** ${course["人數"] || ""}
+**備註：** ${course["備註"] || "（無）"}
+
+請選擇您的意願👇`;
+
+    // 按鈕排版
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId(`join_${rowIndex}_講師`)
+        .setLabel("講師")
+        .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId(`join_${rowIndex}_引導師`)
+        .setLabel("引導師")
+        .setStyle(ButtonStyle.Success),
+      new ButtonBuilder()
+        .setCustomId(`join_${rowIndex}_歐都給`)
+        .setLabel("歐都給")
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId(`join_${rowIndex}_都不行`)
+        .setLabel("都不行")
+        .setStyle(ButtonStyle.Danger)
+    );
+
+    // 發送通知給所有使用者
+    for (const u of users) {
+      const userId = u[0];
+      try {
+        const discordUser = await client.users.fetch(userId);
+        await discordUser.send({ content: message, components: [row] });
+        console.log(`✅ 已通知 ${u[1]} (${userId})`);
+      } catch {
+        console.warn(`⚠️ 無法發送給 ${u[1]} (${userId})`);
+      }
+    }
+
+    res.status(200).send("✅ 已成功發送課程通知");
+  } catch (err) {
+    console.error("❌ 接收課程錯誤：", err);
+    res.status(500).send("伺服器錯誤");
+  }
+});
+
+// ===================== ✅ 新增：按鈕互動事件 =====================
+client.on("interactionCreate", async (interaction) => {
+  if (!interaction.isButton()) return;
+
+  try {
+    const [_, rowIndex, choice] = interaction.customId.split("_");
+    const userId = interaction.user.id;
+
+    // 找使用者姓名
+    const userRes = await sheets.spreadsheets.values.get({
+      spreadsheetId: process.env.SHEET_ID,
+      range: "DC 使用者名單!A2:C",
+    });
+    const users = userRes.data.values || [];
+    const matched = users.find((r) => r[0] === userId);
+    if (!matched) {
+      await interaction.reply({
+        content: "⚠️ 尚未註冊姓名，請先使用 `/註冊姓名`。",
+        ephemeral: true,
+      });
+      return;
+    }
+
+    const userName = matched[1];
+
+    // 找課程報名區欄位
+    const headerRes = await sheets.spreadsheets.values.get({
+      spreadsheetId: process.env.SHEET_ID,
+      range: "課程報名區!A1:Z1",
+    });
+    const headers = headerRes.data.values[0];
+    const targetColIndex = headers.findIndex((h) => h === userName);
+
+    if (targetColIndex === -1) {
+      await interaction.reply({
+        content: `⚠️ 找不到對應欄位「${userName}」，請聯絡管理員！`,
+        ephemeral: true,
+      });
+      return;
+    }
+
+    const colLetter = String.fromCharCode(65 + targetColIndex);
+    const range = `課程報名區!${colLetter}${rowIndex}`;
+
+    // 寫入選擇結果
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: process.env.SHEET_ID,
+      range,
+      valueInputOption: "USER_ENTERED",
+      requestBody: { values: [[choice]] },
+    });
+
+    await interaction.reply({
+      content: `✅ ${userName} 已選擇「${choice}」，已寫入報名表第 ${rowIndex} 列。`,
+      ephemeral: true,
+    });
+
+    console.log(`📝 ${userName} 選擇「${choice}」→ 第 ${rowIndex} 列`);
+  } catch (err) {
+    console.error("❌ 按鈕錯誤：", err);
+    await interaction.reply({
+      content: "發生錯誤，請稍後再試。",
+      ephemeral: true,
+    });
+  }
+});
+
 
 // ===================== 指令監聽 =====================
 client.on("interactionCreate", async (interaction) => {
