@@ -1,4 +1,4 @@
-import express from "express"; // ✅ 新增
+import express from "express";
 import bodyParser from "body-parser";
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
 import { google } from "googleapis";
@@ -11,9 +11,10 @@ import { fileURLToPath } from "url";
 
 dotenv.config();
 
-// ===================== 建立 Google 憑證檔案（Base64） =====================
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// ===================== 建立 Google 憑證檔案（Base64） =====================
 const credentialsPath = path.join(__dirname, "credentials.json");
 
 if (!fs.existsSync(credentialsPath)) {
@@ -25,7 +26,6 @@ if (!fs.existsSync(credentialsPath)) {
     console.error("❌ 建立 credentials.json 失敗：", err);
   }
 }
-
 
 // ===================== ✅ 新增 Express 伺服器 =====================
 const app = express();
