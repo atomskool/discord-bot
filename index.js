@@ -43,12 +43,7 @@ app.listen(PORT, () => {
 // ===================== Discord Bot 主程式 =====================
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
-// ===================== Google Sheets 驗證設定（Render 版本） =====================
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const credentialsPath = path.join(__dirname, "credentials.json");
-
-// 🔒 如果 credentials.json 不存在，就從環境變數建立一份（Render 專用）
+// ===================== Google Sheets 驗證設定 =====================
 if (!fs.existsSync(credentialsPath)) {
   fs.writeFileSync(credentialsPath, process.env.GOOGLE_CREDENTIALS);
   console.log("✅ 已建立 credentials.json 憑證檔案");
@@ -65,7 +60,6 @@ const sheets = google.sheets({ version: "v4", auth });
 client.once("ready", () => {
   console.log(`✅ 已登入：${client.user.tag}`);
 });
-
 
 // ===================== ✅ 新增：接收 GAS 課程推播 =====================
 app.use(bodyParser.json());
@@ -206,7 +200,6 @@ client.on("interactionCreate", async (interaction) => {
     });
   }
 });
-
 
 // ===================== 指令監聽 =====================
 client.on("interactionCreate", async (interaction) => {
